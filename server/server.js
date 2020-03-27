@@ -59,11 +59,13 @@ app.post('/todos',(req,res)=>{
 		res.status(400).send(err);
 	});
 });
+
 app.get('/todos',(req,res)=>{
 	Todo.find({}).then((todos)=>{
 		res.send({todos});
 	}).catch((err)=>res.status(400).send(err));
 });
+
 app.post('/users',(req,res)=>{
 	var user = new User({
 		email:req.body.email
