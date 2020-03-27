@@ -4,6 +4,7 @@ var {User} = require('./models/user');
 const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
+const port = process.env.PORT || 3000;
 
 var app = express();
 
@@ -76,8 +77,8 @@ app.get('/users/:id',(req,res)=>{
 	});
 });
 
-app.listen(3000,()=>{
-	console.log('Server up and running on port 3000');
+app.listen(port,()=>{
+	console.log(`Server up and running on port ${port}`);
 });
  
 module.exports = {app};
