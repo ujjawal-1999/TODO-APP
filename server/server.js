@@ -140,6 +140,17 @@ app.patch('/users/:id',(req,res)=>{
 	}).catch((err)=>res.status(400));
 });
 
+app.post('/users/login',(req,res)=>{
+	var body = _.pick(req.body,["email","password"]);
+	User.findByCredentials(body.email,body.password).then((user)=>{
+		return user.generateAuthToken().then((token)=>{
+			res.header('Authorization',token).send(user);
+		});
+	}).catch((err)=>{
+		res.status(400).send('Unable to find user');
+	});
+});
+
 // app.get('/users/me',authenticate,async(req,res)=>{
 // 	res.send(req.user);
 // 	console.log(req.body)
