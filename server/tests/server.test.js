@@ -3,23 +3,35 @@ const request = require('supertest');
 const {ObjectID} = require('mongodb');
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {User} = require('./../models/user');
+const {todos,populateTodos,users,populateUsers} = require('./seed/seed')
+// var todos =[{
+// 	_id : new ObjectID(),
+// 	text:"First Todo"
+// },{
+// 	_id : new ObjectID(),
+// 	text:"Second Todo",
+// 	completed:true,
+// 	completedAt:15625
+// }];
 
-var todos =[{
-	_id : new ObjectID(),
-	text:"First Todo"
-},{
-	_id : new ObjectID(),
-	text:"Second Todo",
-	completed:true,
-	completedAt:15625
-}];
+// var users = [{
+// 	_id: new ObjectID(),
+// 	email:"jainujjawal1999@gmail.com"
+// },{
+// 	_id : new ObjectID(),
+// 	email:"ujjawal.nits@gmail.com"
+// }];
 
-beforeEach((done)=>{
-	Todo.remove({}).then(()=>{
-		return Todo.insertMany(todos);
-	}).then(()=>done());
-});
+// beforeEach((done)=>{
+// 	User.remove({}).then(()=>{
+// 		return User.insertMany(users);
+// 	}).then(()=>done());
+// });
 
+beforeEach(populateTodos);
+beforeEach(populateUsers);
+describe('TODOS',()=>{
 describe('POST /todos',()=>{
 	it('should add a todo',(done)=>{
 	var text = 'jainujjawal1999';
@@ -114,19 +126,6 @@ describe('DELETE /todos/:id',(req,res)=>{
 			}).catch((err)=>done(err));
 		});
 	});
-	// it('should return a 404 if todo is not found',(done)=>{
-	// 	var hexid = new ObjectID().toHexString();
-	// 	request(app)
-	// 	.delete(`/todos/${hexid}`)
-	// 	.expect(404)
-	// 	.end(done);
-	// });
-	// it('should return a 404 if id is invalid',(done)=>{
-	// 	request(app)
-	// 	.delete(`/todos/123acb`)
-	// 	.expect(404)
-	// 	.end(done);
-	// });
 });
 
 describe('PATCH /todos/:id',()=>{
@@ -160,6 +159,115 @@ describe('PATCH /todos/:id',()=>{
 		})
 		.end(done);
 	});
+});
+});
 
-
-})
+describe('Users',()=>{
+	describe('POST /users',()=>{
+		it('should add a user',(done)=>{
+			var email = "pal@123.com";
+			var password = "123mnbnjdcxkn";
+			request(app)
+			.post('/users')
+			.send({email,password})
+			.expect(200)
+			.expect((res)=>{
+				expect((r)=>{
+					expect(r.body._id).toExist();
+					expect(r.headers.Authorization).toExist();
+				});
+				expect(res.body.email).toBe(email);
+			})
+			.end((err,res)=>{
+				if(err)
+					return done(err);
+				User.findOne({email}).then((user)=>{
+					expect((r)=>{
+						expect(r.user).toExist();
+					expect(r.user.password).toNotBe(password);
+					})
+					done();
+				});
+			});
+		});
+		it('should return validation error if the request fails',(done)=>{
+			var email = 'ujjawal';
+			var password = 'hih';
+			request(app)
+			.post('/users')
+			.send({email,password})
+			.expect(400)
+			.expect((res)=>{
+				expect((r)=>{
+					expect(r.body._id).toNotExist();
+					expect(r.headers.Authorization).toNotExist();
+				});
+			})
+			.end(done);
+			});
+		it('should not create user if email in use',(done)=>{
+			var email = 'ujjawal.nits@gmail.com';
+			var password = "Ujjawal@1999";
+			request(app)
+			.post('/users')
+			.send({email,password})
+			.expect(400)
+			.expect((res)=>{
+				expect((r)=>{
+					expect(r.body._id).toNotExist();
+					expect(r.headers.Authorization).toNotExist();
+				});
+			})
+			.end(done);
+		});
+		});
+	describe('GET /users',()=>{
+		it('should get all the users',(done)=>{
+			request(app)
+			.get('/users')
+			.expect(200)
+			.expect((res)=>{
+				expect(res.body.users.length).toBe(2);
+			})
+			.end(done);
+		});
+	});
+	describe('GET /users/id',()=>{
+		it('should get a user',(done)=>{
+			var hexid = users[0]._id.toHexString();
+			request(app)
+			.get(`/users/${hexid}`)
+			.expect(200)
+			.expect((res)=>{
+				expect(res.body.email).toBe(users[0].email);
+			})
+			.end(done);
+		});
+		it('should return a 400 if id not found',(done)=>{
+			var hexid = new ObjectID().toHexString();
+			request(app)
+			.get(`/users/${hexid}`)
+			.expect(400)
+			.end(done);
+		});
+		it('should return a 404 for non-object id',(done)=>{
+			request(app)
+			.get(`/users/123bhsb`)
+			.expect(404)
+			.end(done);
+		});
+	});
+	describe('PATCH /users/:id',()=>{
+	it('should update the user',(done)=>{
+		var id = users[0]._id.toHexString();
+		request(app)
+		.patch(`/users/${id}`)
+		.send({email:'Updated text'})
+		.expect(200)
+		.expect((res)=>{
+			expect(res.body.email).toBe('Updated text');
+		})
+		.end(done);
+	});
+});
+});

@@ -8,14 +8,15 @@ const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
 const port = process.env.PORT;
 
+var {authenticate} = require('./middleware/authenticate');
+
 var app = express();
 
 app.use(bodyParser.json());
 
 app.post('/todos',(req,res)=>{
-	var todo = new Todo({
-		text:req.body.text
-	});
+	var body = _.pick(req.body,["text","completed","completedAt"]);
+	var todo = new Todo(body);
 	todo.save().then((doc)=>{
 		res.send(doc);
 		console.log(doc);
@@ -83,15 +84,14 @@ app.patch('/todos/:id',(req,res)=>{
 });
 
 app.post('/users',(req,res)=>{
-	var user = new User({
-		email:req.body.email
-	});
-	user.save().then((doc)=>{
-		res.send(doc);
-		console.log(doc);
+	var body = _.pick(req.body,["email","password"]);
+	var user = new User(body);
+	user.save().then(()=>{
+		return user.generateAuthToken();
+	}).then((token)=>{
+		res.header('Authorization',token).send(user);
 	}).catch((err)=>{
-		console.log(err);
-		res.send(err);
+		res.status(400).send(err);
 	});
 });
 
@@ -110,11 +110,40 @@ app.get('/users/:id',(req,res)=>{
 		if(!user.length)
 			res.status(200).send(user);
 		else
-			res.status(404).send('cshiahcs');
+			res.status(404).send();
 	}).catch((err)=>{
-		res.status(400).send('csiahihwqeqf');
+		res.status(400).send();
 	});
 });
+
+app.delete('/users/:id',(req,res)=>{
+	var id = req.params.id;
+	if(!ObjectID.isValid(id))
+		return res.status(404).send();
+	User.findOneAndRemove({_id:id}).then((user)=>{
+		if(!user)
+			res.status(404);
+		else
+			res.status(200).send({user});
+	}).catch((err)=>res.status(400));
+});
+
+app.patch('/users/:id',(req,res)=>{
+	var id = req.params.id;
+	var body = _.pick(req.body,["email"]);
+	if(!ObjectID.isValid(id))
+		return res.status(404);
+	User.findOneAndUpdate({_id:id},{$set:body},{new:true}).then((user)=>{
+		if(!user)
+			return res.status(404).send();
+		res.status(200).send(user);
+	}).catch((err)=>res.status(400));
+});
+
+// app.get('/users/me',authenticate,async(req,res)=>{
+// 	res.send(req.user);
+// 	console.log(req.body)
+// });
 
 app.listen(port,()=>{
 	console.log(`Server up and running on port ${port}`);
