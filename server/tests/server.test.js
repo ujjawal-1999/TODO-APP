@@ -5,32 +5,10 @@ const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 const {User} = require('./../models/user');
 const {todos,populateTodos,users,populateUsers} = require('./seed/seed')
-// var todos =[{
-// 	_id : new ObjectID(),
-// 	text:"First Todo"
-// },{
-// 	_id : new ObjectID(),
-// 	text:"Second Todo",
-// 	completed:true,
-// 	completedAt:15625
-// }];
-
-// var users = [{
-// 	_id: new ObjectID(),
-// 	email:"jainujjawal1999@gmail.com"
-// },{
-// 	_id : new ObjectID(),
-// 	email:"ujjawal.nits@gmail.com"
-// }];
-
-// beforeEach((done)=>{
-// 	User.remove({}).then(()=>{
-// 		return User.insertMany(users);
-// 	}).then(()=>done());
-// });
 
 beforeEach(populateTodos);
 beforeEach(populateUsers);
+
 describe('TODOS',()=>{
 describe('POST /todos',()=>{
 	it('should add a todo',(done)=>{
@@ -187,7 +165,7 @@ describe('Users',()=>{
 					expect(r.user.password).toNotBe(password);
 					})
 					done();
-				});
+				}).catch((err)=>done(err));
 			});
 		});
 		it('should return validation error if the request fails',(done)=>{
@@ -270,4 +248,54 @@ describe('Users',()=>{
 		.end(done);
 	});
 });
+	describe('POST /users/login',()=>{
+		it('should login user and return auth token',(done)=>{
+			request(app)
+			.post('/users/login')
+			.send({email:users[1].email,password:users[1].password})
+			.expect(200)
+			.expect((res)=>{
+				expect((res)=>{
+					expect(res.headers.Authorization).toExist();
+				});
+			})
+			.end((err,res)=>{
+				if(err)
+					return done(err);
+				User.findOne({_id:users[1]._id}).then((user)=>{
+					expect((r)=>{
+						expect(r.user.tokens[0]).toInclude({
+							access:'auth',
+							token:r.headers.Authorization
+						});
+					});
+					done();
+				}).catch((err)=>done(err));
+			});
+		});
+		it('should reject invalid login',(done)=>{
+			request(app)
+			.post('/users/login')
+			.send({email:users[1].email,password:"Ujjawaljain"})
+			.expect(400)
+			.expect((res)=>{
+				expect((r)=>{
+					expect(r.headers.Authorization).toNotExist();
+				});
+			})
+			.end((err,res)=>{
+				if(err)
+					return done(err);
+				User.findOne({_id:users[1]._id}).then((user)=>{
+					expect((r)=>{
+						expect(r.user.tokens[0]).toNotInclude({
+							access:'auth',
+							token:r.headers.Authorization
+						});
+					});
+					done();
+				}).catch((err)=>done(err));
+			});
+		});
+	});
 });
